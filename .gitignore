@@ -13,3 +13,8 @@ venv/
 __pycache__/
 *.pyc
 .DS_Store
+
+# demo build artifacts — keep only the final gif in the repo
+demo/frames/
+demo/contact.png
+demo/hero.html

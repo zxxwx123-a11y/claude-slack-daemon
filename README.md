@@ -2,6 +2,10 @@
 
 **Reach your own Claude Code from a Slack DM. Your machine, your tools, your memory — no cloud brain, no webhook, no public endpoint.**
 
+<p align="center">
+  <img src="demo/hero.gif" alt="3 AM: you text your Mac's Claude Code about a cursed PDF; it digs through your files, reads it, and judges your past self." width="480">
+</p>
+
 Text yourself an idea, a link, or a question in Slack; a tiny daemon on your Mac spawns **headless Claude Code** to handle it with full access to your local files, shell, and MCP tools — then replies in the same DM. Every conversation keeps its memory.
 
 > Most "Claude in Slack" integrations call a **cloud** API that can't touch your computer. This is the inverse: **Slack is just the remote control; the brain is the real Claude Code already on your machine** — with your skills, your MCP servers, your files.
