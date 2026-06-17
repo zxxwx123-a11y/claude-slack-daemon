@@ -1,10 +1,19 @@
+---
+source_type: own_writing
+is_factual: true
+kb_ingested: false
+kb_continuous_seen: true
+---
+
 # claude-slack-daemon
 
 **Reach your own Claude Code from a Slack DM. Your machine, your tools, your memory — no cloud brain, no webhook, no public endpoint.**
 
 <p align="center">
-  <img src="demo/hero.gif" alt="3 AM: you text your Mac's Claude Code about a cursed PDF; it digs through your files, reads it, and judges your past self." width="480">
+  <img src="demo/comic-4panel.png" alt="4-panel comic: you text Slack from the couch → the message hops to your Mac over Socket Mode (no cloud) → Claude Code digs through your local files → the answer lands back on your phone." width="560">
 </p>
+
+<p align="center"><em>Text Slack from the couch. Your Mac does the work — with your files, your tools, your memory.</em></p>
 
 Text yourself an idea, a link, or a question in Slack; a tiny daemon on your Mac spawns **headless Claude Code** to handle it with full access to your local files, shell, and MCP tools — then replies in the same DM. Every conversation keeps its memory.
 
@@ -142,6 +151,12 @@ This bot can read files and run shell commands **as you** on your machine. Keep 
 ## How memory works
 
 Each Slack thread maps to one Claude Code `session_id`, stored in `~/.claude-slack-daemon/sessions.json`. The first message mints a UUID (`--session-id`); every later message resumes it (`--resume`). Long conversations stay bounded via Claude Code's auto-compaction.
+
+## …and yes, it has opinions about your 3 AM downloads
+
+<p align="center">
+  <img src="demo/hero.gif" alt="3 AM: you ask your Mac's Claude Code about a cursed PDF; it tears through your files, reads 14 pages, and judges past-you." width="420">
+</p>
 
 ## License
 
