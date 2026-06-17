@@ -1,0 +1,22 @@
+# claude-slack-daemon — copy to config.toml and edit.
+# Nothing here is secret EXCEPT tokens, which live in .env (not this file).
+
+[bot]
+name = "Assistant"            # display name the agent uses for itself
+owner = "the owner"           # how the agent refers to you in replies
+reply_language = "the same language the user writes in"   # or "English", "中文", "Español", ...
+system_extra = ""             # optional extra system instructions appended to every prompt
+
+[access]
+# DEFAULT-DENY. Only these Slack user IDs are ever answered; everyone else is ignored.
+# Empty list = the bot answers NO ONE (safe default until you add yourself).
+# Find your id: DM the bot once and read agent.log, or run the setup wizard (it captures it).
+allowed_user_ids = []         # e.g. ["U0XXXXXXXX"]
+
+[agent]
+claude_bin = "claude"         # path to the Claude Code CLI (e.g. "~/.local/bin/claude")
+cwd = ""                      # working dir the brain runs in (default: <state>/work)
+model = "sonnet"              # "sonnet" | "opus"
+permission_mode = "acceptEdits"   # "default" | "acceptEdits" | "bypassPermissions"
+mcp_config = ""               # optional path to YOUR own .mcp.json (pass-through to --mcp-config)
+timeout_seconds = 900

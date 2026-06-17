@@ -1,0 +1,15 @@
+# secrets & local config — NEVER commit
+.env
+config.toml
+
+# runtime state
+.claude-slack-daemon/
+work/
+sessions.json
+*.log
+
+# python
+venv/
+__pycache__/
+*.pyc
+.DS_Store

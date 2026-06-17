@@ -1,0 +1,36 @@
+# Create your Slack app from this: api.slack.com/apps -> Create New App -> From a manifest.
+# Pre-enables Socket Mode, the Messages tab, and the exact scopes — so you skip the manual toggling.
+display_information:
+  name: Assistant
+  description: Personal Claude Code agent, reachable over Slack DM
+features:
+  bot_user:
+    display_name: Assistant
+    always_online: true
+  app_home:
+    home_tab_enabled: false
+    messages_tab_enabled: true
+    messages_tab_read_only_enabled: false   # lets you actually send DMs to the bot
+oauth_config:
+  scopes:
+    bot:
+      - chat:write
+      - channels:history
+      - channels:read
+      - groups:history
+      - groups:read
+      - im:history
+      - im:read
+      - im:write
+      - app_mentions:read
+      - users:read
+settings:
+  event_subscriptions:
+    bot_events:
+      - message.channels
+      - message.groups
+      - message.im
+      - app_mention
+  socket_mode_enabled: true
+  org_deploy_enabled: false
+  token_rotation_enabled: false
