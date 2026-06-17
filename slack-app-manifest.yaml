@@ -24,6 +24,13 @@ oauth_config:
       - im:write
       - app_mentions:read
       - users:read
+    # user scopes are only needed for the optional digest / draft features (v0.2);
+    # they let those scripts search for @-mentions of you and read the thread.
+    user:
+      - search:read
+      - channels:history
+      - groups:history
+      - im:history
 settings:
   event_subscriptions:
     bot_events:

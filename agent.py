@@ -50,6 +50,10 @@ MODEL = CFG.get("agent", {}).get("model", "sonnet")
 PERM = CFG.get("agent", {}).get("permission_mode", "acceptEdits")
 MCP_CONFIG = CFG.get("agent", {}).get("mcp_config", "")
 TIMEOUT = int(CFG.get("agent", {}).get("timeout_seconds", 900))
+DISPATCH = bool(CFG.get("agent", {}).get("dispatch_big_jobs", False))  # offload big jobs to tasks.py
+_tasks = None
+if DISPATCH:
+    import tasks as _tasks
 
 BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN", "")
 APP_TOKEN = os.environ.get("SLACK_APP_TOKEN", "")
@@ -103,7 +107,37 @@ def build_prompt(text: str) -> str:
         f"run shell commands, use any configured MCP tools — to actually help, not just chat. "
         f"Reply in {REPLY_LANG}, conclusion first, concise. Your reply goes straight to their Slack."
     )
-    return base + (f"\n{SYSTEM_EXTRA}" if SYSTEM_EXTRA else "")
+    base += (f"\n{SYSTEM_EXTRA}" if SYSTEM_EXTRA else "")
+    if DISPATCH:
+        base += (
+            "\n\nTASK TRIAGE — if this is a BIG multi-step build/engineering job (build something, "
+            "implement a feature, do a large refactor — anything needing a dedicated work session and "
+            "many tool calls), do NOT attempt it inline. Reply with EXACTLY one line:\n"
+            "[[DISPATCH]] <a complete, self-contained task description incl. any context needed>\n"
+            "It will run in the background and you'll be pinged here when it finishes. For normal "
+            "questions / lookups / quick edits, just answer directly as usual."
+        )
+    return base
+
+
+def task_command(text: str):
+    """Instant DM commands for the background queue (no Claude call). None = not a command."""
+    if not DISPATCH:
+        return None
+    t = text.strip()
+    if t.lower() in ("tasks", "task", "queue", "todo"):
+        return _tasks.summary()
+    m = re.match(r"(?:stop|cancel|kill)\s*#?\s*(\d+)$", t, re.I)
+    if m:
+        _tasks.stop(int(m.group(1)))
+        return f"🛑 Stopped *#{m.group(1)}*"
+    m = re.match(r"(?:show|detail)\s*#?\s*(\d+)$", t, re.I)
+    if m:
+        x = _tasks.get(int(m.group(1)))
+        return (f"*#{x['id']}* [{x['status']}]\n_{x['request'][:200]}_\n\n"
+                f"{(x.get('result') or '(no result yet)')[:1200]}"
+                if x else f"#{m.group(1)} not found")
+    return None
 
 
 def run_claude(prompt: str, convo_key: str) -> str:
@@ -158,18 +192,32 @@ def handle(event, say, client, via_mention: bool = False) -> None:
         return
     ch = event.get("channel")
     log(f"IN  {ch} {text[:80]!r}")
+    is_dm = event.get("channel_type") == "im"
+    post_kw = {} if is_dm else {"thread_ts": ts}
+    tcmd = task_command(text)                          # queue commands reply instantly, no Claude
+    if tcmd is not None:
+        say(text=tcmd, **post_kw)
+        log("OUT task-cmd")
+        return
     try:
         client.reactions_add(channel=ch, timestamp=ts, name="eyes")
     except Exception:
         pass
-    is_dm = event.get("channel_type") == "im"
-    post_kw = {} if is_dm else {"thread_ts": ts}
     try:
         ph_ts = say(text="…", **post_kw).get("ts")    # instant ack, edited into the answer
     except Exception:
         ph_ts = None
     convo_key = event.get("thread_ts") or ch          # DM = one lasting session; thread = its own
-    reply = to_mrkdwn(run_claude(build_prompt(text), convo_key))
+    raw = run_claude(build_prompt(text), convo_key)
+    if DISPATCH:                                       # big job -> background runner + ping when done
+        m = re.match(r"\s*\[\[DISPATCH\]\]\s*(.+)", raw, re.S)
+        if m:
+            task = m.group(1).strip()
+            tid = _tasks.enqueue(task)
+            _tasks.spawn(tid)
+            raw = (f"🏗️ Big job — running *#{tid}* in the background; I'll ping you here when it's "
+                   f"done.\n_{task[:140]}_\n\n`tasks` = list · `show {tid}` = result · `stop {tid}` = cancel")
+    reply = to_mrkdwn(raw)
     try:
         if ph_ts:
             client.chat_update(channel=ch, ts=ph_ts, text=reply)

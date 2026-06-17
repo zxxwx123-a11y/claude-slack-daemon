@@ -1,10 +1,3 @@
----
-source_type: own_writing
-is_factual: true
-kb_ingested: false
-kb_continuous_seen: true
----
-
 # claude-slack-daemon
 
 **Reach your own Claude Code from a Slack DM. Your machine, your tools, your memory — no cloud brain, no webhook, no public endpoint.**
@@ -61,6 +54,12 @@ Back into your Slack DM
 - ♻️ **Self-healing** — launchd KeepAlive + an independent heartbeat watchdog
 - 💸 **No separate API key** — uses your existing Claude Code login/subscription
 - ⚡ **Instant ack** — replies `…` immediately, then edits in the answer when ready
+
+**Optional, opt-in ([v0.2](CHANGELOG.md) — all off by default):**
+
+- 🏗️ **Background jobs** — text a big multi-step job from your phone; it runs detached and pings you `done`. `tasks` / `show #N` / `stop #N`.
+- 📬 **Proactive digest** — periodically scans your unread Gmail + Slack @-mentions, Claude triages, you get one short DM of what actually needs you (read-only).
+- 💡 **Draft assistant** — when someone @-mentions you, it drafts a reply (full-thread aware) into your DM. It never sends — you review and hit send.
 
 ## Requirements
 
@@ -139,6 +138,59 @@ Everything deployment-specific is in [`config.example.toml`](config.example.toml
 | `agent.model` | `sonnet` \| `opus` |
 | `agent.mcp_config` | path to **your own** `.mcp.json` → gives the bot your MCP tools |
 | `agent.permission_mode` | `default` \| `acceptEdits` \| `bypassPermissions` (see Security) |
+| `agent.dispatch_big_jobs` | offload big jobs to a background runner (see below) |
+| `[digest]` / `[draft]` | the optional proactive features (see below) |
+
+## Proactive mode & background jobs (v0.2)
+
+Three opt-in extras turn the daemon from "answers when asked" into "reaches out when it matters." All are **off by default**; enable them in `config.toml`.
+
+### 🏗️ Background jobs — `tasks.py`
+
+Set `agent.dispatch_big_jobs = true`. Now when you text a big, multi-step request, the bot doesn't block on one reply — it offloads the job to a **detached background runner** and pings your DM when it's `done` (or `failed`). You get three DM commands:
+
+| Command | Does |
+|---|---|
+| `tasks` | list the recent queue |
+| `show #N` | the full request + result of job N |
+| `stop #N` | cancel a running job |
+
+It's headless by default (no terminal window to babysit), so it works over SSH too. Tune `[tasks].timeout_seconds`; unattended jobs may want a more permissive `[tasks].permission_mode`.
+
+**Watch it live — `[tasks] mode = "window"` (macOS).** Prefer to *see* a big job run instead of getting a headless ping? Set `mode = "window"` and the runner pops a Terminal/iTerm window with Claude Code working the task interactively: watch every step, jump in whenever, and the session stays open — just keep typing to continue when you're back at your desk. Uses iTerm if installed, else the built-in Terminal.app; closing the session pings your DM. (On first run in a new working dir, Claude Code asks once to trust the folder — accept it.)
+
+### 📬 Proactive digest — `digest.py`  ·  💡 Draft assistant — `draft.py`
+
+Both are **standalone scripts you run on a timer** (they aren't part of the always-on daemon). Both are **read-only / never-send**:
+
+- **`digest.py`** scans your unread Gmail + Slack @-mentions, lets Claude pick what genuinely needs you, and pushes one short DM. Enable `[digest].enabled = true`.
+- **`draft.py`** drafts a reply to your latest Slack @-mention (reading the whole thread) into your DM. You review and send it yourself. Enable `[draft].enabled = true`.
+
+Both need a **User OAuth Token** (`SLACK_USER_TOKEN` in `.env`, scope `search:read` + history — the manifest already requests it). Set `bot.slack_handle` (your @handle) and, optionally, `bot.owner_context` (a one-liner about you, so the triage knows what matters). The digest's Gmail half also needs `GMAIL_ADDRESS` + `GMAIL_APP_PASSWORD`.
+
+Run them on macOS launchd `StartInterval` (or cron) — e.g. digest every 30 min, draft every ~2.5 min for near-real-time:
+
+```xml
+<!-- ~/Library/LaunchAgents/com.you.claude-slack-digest.plist  (edit the paths) -->
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.you.claude-slack-digest</string>
+  <key>ProgramArguments</key><array>
+    <string>/ABSOLUTE/PATH/claude-slack-daemon/venv/bin/python</string>
+    <string>/ABSOLUTE/PATH/claude-slack-daemon/digest.py</string>
+  </array>
+  <key>WorkingDirectory</key><string>/ABSOLUTE/PATH/claude-slack-daemon</string>
+  <key>StartInterval</key><integer>1800</integer>
+</dict></plist>
+```
+
+Test either one immediately (bypassing the work-hours window) with:
+
+```bash
+CCSLACK_FORCE=1 ./venv/bin/python digest.py
+CCSLACK_FORCE=1 ./venv/bin/python draft.py
+```
 
 ## Security
 
@@ -157,6 +209,10 @@ Each Slack thread maps to one Claude Code `session_id`, stored in `~/.claude-sla
 <p align="center">
   <img src="demo/hero.gif" alt="3 AM: you ask your Mac's Claude Code about a cursed PDF; it tears through your files, reads 14 pages, and judges past-you." width="420">
 </p>
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md). Latest: **v0.2** — proactive digest, draft assistant, and background jobs (all opt-in).
 
 ## License
 

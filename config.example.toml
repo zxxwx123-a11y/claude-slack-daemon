@@ -7,6 +7,11 @@ owner = "the owner"           # how the agent refers to you in replies
 reply_language = "the same language the user writes in"   # or "English", "中文", "Español", ...
 system_extra = ""             # optional extra system instructions appended to every prompt
 
+# Only needed for the proactive features (digest / draft). Safe to leave blank otherwise.
+owner_slack_id = ""           # your Slack user id (U...); defaults to the first allowed_user_ids entry
+slack_handle = ""             # your Slack @handle (no @) — used to find @-mentions of you
+owner_context = ""            # one line about you + what matters, helps digest/draft judge relevance
+
 [access]
 # DEFAULT-DENY. Only these Slack user IDs are ever answered; everyone else is ignored.
 # Empty list = the bot answers NO ONE (safe default until you add yourself).
@@ -17,6 +22,24 @@ allowed_user_ids = []         # e.g. ["U0XXXXXXXX"]
 claude_bin = "claude"         # path to the Claude Code CLI (e.g. "~/.local/bin/claude")
 cwd = ""                      # working dir the brain runs in (default: <state>/work)
 model = "sonnet"              # "sonnet" | "opus"
-permission_mode = "acceptEdits"   # "default" | "acceptEdits" | "bypassPermissions"
+permission_mode = "acceptEdits"   # "default" | "acceptEdits" | "bypassPermissions" (see Security)
 mcp_config = ""               # optional path to YOUR own .mcp.json (pass-through to --mcp-config)
 timeout_seconds = 900
+dispatch_big_jobs = false     # offload big multi-step jobs to a background runner that pings you when done
+
+# --- Optional: background jobs (tasks.py). Only used when agent.dispatch_big_jobs = true. ---
+[tasks]
+mode = "headless"             # "headless" (default, portable, SSH/Linux-ok) | "window" (macOS: pop a live Terminal/iTerm window you can watch & type into)
+timeout_seconds = 1800        # max seconds a single background job may run (headless mode)
+permission_mode = ""          # override agent.permission_mode for unattended jobs (blank = inherit)
+
+# --- Optional: proactive inbox digest (digest.py, run on a timer). Read-only — never sends. ---
+[digest]
+enabled = false
+sources = ["slack", "gmail"]  # which inboxes to scan; drop one to skip it
+work_hours = [9, 19]          # only run during these local hours; [] = always
+
+# --- Optional: draft replies to @-mentions (draft.py, run on a timer). Never sends. ---
+[draft]
+enabled = false
+work_hours = [9, 19]
